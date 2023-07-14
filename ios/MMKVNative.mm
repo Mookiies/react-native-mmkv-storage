@@ -37,10 +37,42 @@ RCT_EXPORT_MODULE()
         rPath = rootDir;
         _secureStorage = [[SecureStorage alloc] init];
         [MMKV initializeMMKV:rootDir];
+        
+        [self addSkipBackupAttributeToDir:rootDir];
     });
     
     
     return self;
+}
+
+- (BOOL)addSkipBackupAttributeToURLAtPath:(NSURL *)url
+{
+    if (!url) return NO;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:url.path]) return NO;
+
+    NSError *error = nil;
+    NSNumber *value = nil;
+    BOOL success = [url getResourceValue:&value forKey:NSURLIsExcludedFromBackupKey error:&error];
+    if (value.boolValue == YES) {
+        NSLog(@"%@ already marked for backup exclusion", [url lastPathComponent]);
+        return YES;
+    }
+
+    success = [url setResourceValue:[NSNumber numberWithBool:YES]
+                                  forKey:NSURLIsExcludedFromBackupKey error:&error];
+    if(!success){
+        NSLog(@"Error excluding %@ from backup: %@", [url lastPathComponent], error);
+    } else {
+        NSLog(@"Succesfully marked %@ for backup exclusion", [url lastPathComponent]);
+    }
+    return success;
+}
+
+- (BOOL) addSkipBackupAttributeToDir:(NSString *)path
+{
+    if (!path) return NO;
+    NSURL *pathUrl = [[NSURL alloc] initFileURLWithPath:path isDirectory:YES];
+    return [self addSkipBackupAttributeToURLAtPath:pathUrl];
 }
 
 MMKV *getInstance(NSString *ID) {
